@@ -3,9 +3,10 @@ const package = require('./package.json');
 const fs = require('fs');
 
 const config = {
+  commitUrl: 'https://github.com/commit/',
   header: 'Release Notes',
   infile: 'CHANGELOG.md',
-  repo: 'https://github.com',
+  issueUrl: 'https://rally.com/issues/',
   types: [
     {
       name: 'feat',
@@ -33,7 +34,7 @@ const generateChangelog = () => {
         hash: commitDetails[6],
         message: commitDetails[4],
         scope: commitDetails[2],
-        story: commitDetails[5],
+        story: commitDetails[5] ? commitDetails[5].replace('#', '') : null,
         type: commitDetails[1]
       };
     })
@@ -57,7 +58,7 @@ const generateChangelog = () => {
   const appListByName = workspaces
     .reduce((apps, workspace) => {
       getApps(workspace).forEach((app) => {
-        const commitList = commits.filter(({scope}) => scope === app.name);
+        const commitList = commits.filter(({scope}) => app.name.includes(scope));
         apps[app.name] = {...app, commits: commitList};
       });
 
@@ -73,11 +74,13 @@ const generateChangelog = () => {
 
   console.log({commits, workspaces, appListByName, updatedApps});
 
-  const appContent = updatedApps.map((app) => {
-    const sectionContent = generateSection(app);
-    writeAppChangelog(app.path, sectionContent, infile);
-    return sectionContent;
-  });
+  const appContent = updatedApps
+    .map((app) => {
+      const sectionContent = generateSection(app);
+      writeAppChangelog(app.path, sectionContent, infile);
+      return sectionContent;
+    })
+    .join('\n');
 
   writeRootChangelog(appContent, infile);
 };
@@ -110,7 +113,7 @@ const generateSection = ({commits, name, version}) => {
   const list = commits.reduce((sectionContent, commit) => {
     const line = generateCommitLine(commit);
 
-    if(name !== line.scope) {
+    if(!name.includes(line.scope)) {
       return sectionContent;
     }
 
@@ -127,19 +130,44 @@ const generateSection = ({commits, name, version}) => {
   return `## ${name} v${version}\n${list}`;
 };
 
-const generateCommitLine = ({breaking, hash, message, repo, scope, story, type}) => {
-  const storyLink = story ? ` [${story}](${repo}/issues/${story}): ` : '';
-  const hashLink = hash ? ` ([${hash}](${repo}/commit/${hash}))` : '';
-  const breaks = breaking ? ' **BREAKING CHANGE** ' : '';
+const generateCommitLine = ({breaking, hash, message, scope, story, type}) => {
+  const {commitUrl, issueUrl} = config;
+  const storyLink = story ? `[${story}](${issueUrl}${story}): ` : '';
+  const hashLink = hash ? ` ([${hash}](${commitUrl}${hash}))` : '';
+  const breaks = breaking ? '**BREAKING CHANGE** ' : '';
   return {content: `- ${storyLink}${breaks}${message}${hashLink}`, scope, type};
 };
 
 const writeRootChangelog = (content, infile = 'CHANGELOG.md') => {
-  fs.writeFileSync(`./${infile}`, `${generateHeader()}${content}`);
+  const filePath = `./${infile}`;
+  writeChangelogFile(content, filePath);
 };
 
 const writeAppChangelog = (path, content, infile = 'CHANGELOG.md') => {
-  fs.writeFileSync(`${path}/${infile}`, `${generateHeader()}${content}`);
+  const filePath = `${path}/${infile}`;
+  writeChangelogFile(content, filePath);
+};
+
+const writeChangelogFile = (content, filePath) => {
+  if(fs.existsSync(filePath)) {
+    fs.readFile(filePath, 'utf8', (readError, data) => {
+      if(readError) {
+        return console.log(readError);
+      }
+
+      if(!data.includes(content)) {
+        const updatedNotes = data.replace('# Release Notes\n', `${generateHeader()}${content}`);
+
+        fs.writeFile(filePath, updatedNotes, 'utf8', (writeError) => {
+          if(writeError) {
+            return console.log(writeError);
+          }
+        });
+      }
+    });
+  } else {
+    fs.writeFileSync(filePath, `${generateHeader()}${content}\n`);
+  }
 };
 
 generateChangelog();
