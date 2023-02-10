@@ -1,0 +1,28 @@
+{
+  "name": "@example/app1",
+  "version": "1.0.0",
+  "description": "Example",
+  "main": "index.js",
+  "dependencies": {
+    "semantic-release": "^20.0.2"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^17.4.2",
+    "@commitlint/config-conventional": "^17.4.2",
+    "husky": "^8.0.3"
+  },
+  "scripts": {
+    "prepare": "husky install",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nitrog7/semantic-release.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nitrog7/semantic-release/issues"
+  },
+  "homepage": "https://github.com/nitrog7/semantic-release#readme"
+}
